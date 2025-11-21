@@ -116,7 +116,7 @@ NextMeal_opt = ["Breakfast", "Dinner", "Lunch"]
 # ------------------------------
 # STREAMLIT INPUTS
 # ------------------------------
-Age = st.selectbox("Age", Age_opt, index=0)
+Age = st.selectbox("Age ", Age_opt, index=0)
 Gender = st.selectbox("Gender", Gender_opt, index=0)
 Height = st.selectbox("Height (in feet and inch)", Height_opt, index=0)
 Weight = st.selectbox("Weight (kg)", Weight_opt, index=0)
@@ -167,3 +167,4 @@ if st.button("🔍 Get Meal Suggestion"):
 
     st.success("🍽 **Recommended Meal:**")
     st.subheader(final_meal)
+
