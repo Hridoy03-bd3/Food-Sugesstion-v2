@@ -45,7 +45,7 @@ h3 { color: #333333; font-family: 'Arial', sans-serif; }
 model = joblib.load("random_forest_model.pkl")
 label_encoders = joblib.load("label_encoders.pkl")
 
-st.title("🍽 Smart Meal Suggestion System")
+st.title("🍽 Smart Meal Suggestion System For DIU Students")
 st.write("Fill the fields below to get your personalized meal recommendation.")
 
 # ------------------------------
@@ -192,3 +192,4 @@ if st.button("🔍 Get Meal Suggestion"):
         df_history.to_csv(history_file, index=False)
 
         st.info(f"✅ Your suggestion has been saved to {history_file}")
+
