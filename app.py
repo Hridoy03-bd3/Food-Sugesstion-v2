@@ -10,7 +10,7 @@ st.markdown("""
 <style>
 body { background-color: #f0f2f6; }
 h1 { color: #ff4b4b; text-align: center; font-family: 'Arial', sans-serif; margin-bottom: 10px; }
-h3 { color: #333333; font-family: 'Arial', sans-serif; }
+h3 { color: #333333; font-family: 'Arial', sans-serif'; }
 
 /* Input cards */
 .stSelectbox, .stButton {
@@ -104,29 +104,28 @@ Skip_opt = [
 NextMeal_opt = ["Breakfast", "Dinner", "Lunch"]
 
 # ------------------------------
-# STREAMLIT INPUTS IN COLUMNS
+# STREAMLIT INPUTS
 # ------------------------------
 col1, col2, col3 = st.columns(3)
-
 with col1:
-    Age = st.selectbox("Age ", Age_opt, index=0)
-    Gender = st.selectbox("Gender", Gender_opt, index=0)
-    Height = st.selectbox("Height (in feet and inch)", Height_opt, index=0)
-    Weight = st.selectbox("Weight (kg)", Weight_opt, index=0)
+    Age = st.selectbox("Age ", Age_opt)
+    Gender = st.selectbox("Gender", Gender_opt)
+    Height = st.selectbox("Height (in feet and inch)", Height_opt)
+    Weight = st.selectbox("Weight (kg)", Weight_opt)
 
 with col2:
-    Smoking = st.selectbox("Smoking Status", Smoke_opt, index=0)
-    Resident = st.selectbox("Residential Student?", Resident_opt, index=0)
-    Marital = st.selectbox("Marital Status", Marital_opt, index=0)
-    Sleep = st.selectbox("Sleep Last Night", Sleep_opt, index=0)
+    Smoking = st.selectbox("Smoking Status", Smoke_opt)
+    Resident = st.selectbox("Residential Student?", Resident_opt)
+    Marital = st.selectbox("Marital Status", Marital_opt)
+    Sleep = st.selectbox("Sleep Last Night", Sleep_opt)
 
 with col3:
-    Stress = st.selectbox("Stress/Anxiety Level", Stress_opt, index=0)
-    Activity = st.selectbox("Physical Activity Level", Activity_opt, index=0)
-    LastMeal = st.selectbox("Last Meal Time", LastMeal_opt, index=0)
-    Hunger = st.selectbox("Current Hunger Level", Hunger_opt, index=0)
-    Skipped = st.selectbox("Skipped a Meal Today?", Skip_opt, index=0)
-    NextMeal = st.selectbox("Next Meal?", NextMeal_opt, index=0)
+    Stress = st.selectbox("Stress/Anxiety Level", Stress_opt)
+    Activity = st.selectbox("Physical Activity Level", Activity_opt)
+    LastMeal = st.selectbox("Last Meal Time", LastMeal_opt)
+    Hunger = st.selectbox("Current Hunger Level", Hunger_opt)
+    Skipped = st.selectbox("Skipped a Meal Today?", Skip_opt)
+    NextMeal = st.selectbox("Next Meal?", NextMeal_opt)
 
 # ------------------------------
 # ENCODE FUNCTION
@@ -134,20 +133,14 @@ with col3:
 def encode_value(col, value):
     le = label_encoders[col]
     value = value.strip().rstrip(',')
-    
-    # Fix known typos for NextMeal
     if col == "What meal are you likely to take next?":
-        next_meal_map = {"Breakfast": "Breakfasst"}  # encoder had typo
+        next_meal_map = {"Breakfast": "Breakfasst"}  # typo fix
         value = next_meal_map.get(value, value)
-    
     if value not in le.classes_:
         st.error(f"Value '{value}' not found in encoder for '{col}'")
         return None
     return le.transform([value])[0]
 
-# ------------------------------
-# CREATE DATAFRAME
-# ------------------------------
 input_data = pd.DataFrame({
     "Age ": [encode_value("Age ", Age)],
     "Gender": [encode_value("Gender", Gender)],
@@ -166,13 +159,12 @@ input_data = pd.DataFrame({
 })
 
 # ------------------------------
-# PREDICT AND SAVE
+# PREDICTION
 # ------------------------------
 if st.button("🔍 Get Meal Suggestion"):
     if input_data.isnull().values.any():
         st.error("Some inputs could not be encoded. Please check your selections.")
     else:
-        # Predict
         encoded_pred = model.predict(input_data)[0]
         meal_decoder = label_encoders["Meal Suggestion"]
         final_meal = meal_decoder.inverse_transform([encoded_pred])[0]
@@ -180,17 +172,46 @@ if st.button("🔍 Get Meal Suggestion"):
         st.success("🍽 **Recommended Meal:**")
         st.subheader(final_meal)
 
-        # Ask user if they want to save
-        save_option = st.checkbox("💾 Save this suggestion to history?")
-        if save_option:
-            record = input_data.copy()
-            record["Meal Suggestion"] = final_meal
-            record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            try:
-                history_file = "meal_history.csv"
-                df_history = pd.read_csv(history_file)
-                df_history = pd.concat([df_history, record], ignore_index=True)
-            except FileNotFoundError:
-                df_history = record
-            df_history.to_csv(history_file, index=False)
-            st.info(f"✅ Your suggestion has been saved to {history_file}")
+        # Save prediction in session_state
+        st.session_state["last_prediction"] = final_meal
+        st.session_state["last_input"] = input_data.copy()
+
+# ------------------------------
+# SAVE TO CSV
+# ------------------------------
+if "last_prediction" in st.session_state:
+    save_option = st.checkbox("💾 Save this suggestion to history?")
+    if save_option:
+        record = st.session_state["last_input"]
+        record["Meal Suggestion"] = st.session_state["last_prediction"]
+        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            history_file = "meal_history.csv"
+            df_history = pd.read_csv(history_file)
+            df_history = pd.concat([df_history, record], ignore_index=True)
+        except FileNotFoundError:
+            df_history = record
+        df_history.to_csv(history_file, index=False)
+        st.info(f"✅ Your suggestion has been saved to {history_file}")
+
+# ------------------------------
+# FULL FOOD MENU
+# ------------------------------
+def show_food_menu():
+    st.header("📋 Full Food Menu")
+    menu_type = st.radio("Select Meal Type:", ["Breakfast", "Lunch", "Dinner"])
+    if menu_type == "Breakfast":
+        items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daals", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar"]
+        st.subheader("🍳 Breakfast Menu")
+    elif menu_type == "Lunch":
+        items = ["Grilled Chicken with Rice", "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)", "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal", "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji"]
+        st.subheader("🥗 Lunch Menu")
+    else:
+        items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)", "Ruti (3 pcs) + Dim (Egg) Curry + Daals", "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
+        st.subheader("🌙 Dinner Menu")
+    for item in items:
+        st.write("•", item)
+
+st.sidebar.header("🍽 Menu Viewer")
+if st.sidebar.button("View Full Menu"):
+    show_food_menu()
