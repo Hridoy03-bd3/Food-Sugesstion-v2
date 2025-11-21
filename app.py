@@ -40,7 +40,7 @@ h3 { color: #333333; font-family: 'Arial', sans-serif; }
 """, unsafe_allow_html=True)
 
 # ------------------------------
-# Load model & encoders
+# LOAD MODEL & ENCODERS
 # ------------------------------
 model = joblib.load("random_forest_model.pkl")
 label_encoders = joblib.load("label_encoders.pkl")
@@ -52,7 +52,7 @@ st.write("Fill the fields below to get your personalized meal recommendation.")
 # CATEGORY OPTIONS
 # ------------------------------
 Age_opt = ["18-20", "21-23", "23-26"]
-Gender_opt = ["Female", "Gender", "Male"]
+Gender_opt = ["Female", "Male"]
 Height_opt = [
     "5 feet 0 inches – 5 feet 3 inches",
     "5 feet 4 inches – 5 feet 7 inches",
@@ -133,12 +133,13 @@ with col3:
 # ------------------------------
 def encode_value(col, value):
     le = label_encoders[col]
-    value = value.strip()
-    if col == "Have you already skipped a meal today (Breakfast/Lunch/Dinner)?":
-        value = value.rstrip(',')
+    value = value.strip().rstrip(',')
+    
+    # Fix known typos for NextMeal
     if col == "What meal are you likely to take next?":
-        if value.lower() == "breakfast":
-            value = "Breakfasst"
+        next_meal_map = {"Breakfast": "Breakfasst"}  # encoder had typo
+        value = next_meal_map.get(value, value)
+    
     if value not in le.classes_:
         st.error(f"Value '{value}' not found in encoder for '{col}'")
         return None
@@ -179,17 +180,17 @@ if st.button("🔍 Get Meal Suggestion"):
         st.success("🍽 **Recommended Meal:**")
         st.subheader(final_meal)
 
-        # Save to CSV
-        record = input_data.copy()
-        record["Meal Suggestion"] = final_meal
-        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            history_file = "meal_history.csv"
-            df_history = pd.read_csv(history_file)
-            df_history = pd.concat([df_history, record], ignore_index=True)
-        except FileNotFoundError:
-            df_history = record
-        df_history.to_csv(history_file, index=False)
-
-        st.info(f"✅ Your suggestion has been saved to {history_file}")
-
+        # Ask user if they want to save
+        save_option = st.checkbox("💾 Save this suggestion to history?")
+        if save_option:
+            record = input_data.copy()
+            record["Meal Suggestion"] = final_meal
+            record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            try:
+                history_file = "meal_history.csv"
+                df_history = pd.read_csv(history_file)
+                df_history = pd.concat([df_history, record], ignore_index=True)
+            except FileNotFoundError:
+                df_history = record
+            df_history.to_csv(history_file, index=False)
+            st.info(f"✅ Your suggestion has been saved to {history_file}")
