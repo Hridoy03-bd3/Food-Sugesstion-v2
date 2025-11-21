@@ -3,6 +3,53 @@ import pandas as pd
 import joblib
 
 # ------------------------------
+# CSS STYLING
+# ------------------------------
+st.markdown("""
+<style>
+/* Background color */
+body {
+    background-color: #f5f7fa;
+}
+
+/* Title style */
+h1 {
+    color: #ff4b4b;
+    text-align: center;
+    font-family: 'Arial', sans-serif;
+}
+
+/* Subtitle style */
+h3 {
+    color: #333333;
+    font-family: 'Arial', sans-serif;
+}
+
+/* Card style for inputs */
+.stSelectbox, .stButton {
+    background-color: #ffffff;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Button styling */
+.stButton>button {
+    background-color: #ff4b4b;
+    color: white;
+    font-weight: bold;
+    border-radius: 10px;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+}
+.stButton>button:hover {
+    background-color: #ff1a1a;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ------------------------------
 # Load model & encoders
 # ------------------------------
 model = joblib.load("random_forest_model.pkl")
@@ -12,9 +59,8 @@ st.title("🍽 Smart Meal Suggestion System")
 st.write("Fill the fields below to get your personalized meal recommendation.")
 
 # ------------------------------
-# CATEGORY OPTIONS (From You)
+# CATEGORY OPTIONS
 # ------------------------------
-
 Age_opt = ["18-20", "21-23", "23-26"]
 Gender_opt = ["Female", "Gender", "Male"]
 Height_opt = [
@@ -64,35 +110,34 @@ Skip_opt = [
     "Yes, I skipped Breakfast",
     "Yes, I skipped Dinner",
     "Yes, I skipped Lunch",
-  
 ]
-NextMeal_opt = ["Breakfasst", "Dinner", "Lunch"]
+NextMeal_opt = ["Breakfast", "Dinner", "Lunch"]
 
 # ------------------------------
 # STREAMLIT INPUTS
 # ------------------------------
-
-Age = st.selectbox("Age ", Age_opt)
-Gender = st.selectbox("Gender", Gender_opt)
-Height = st.selectbox("Height (in feet and inch)", Height_opt)
-Weight = st.selectbox("Weight (kg)", Weight_opt)
-Smoking = st.selectbox("Smoking Status", Smoke_opt)
-Resident = st.selectbox("Are you a residential student?", Resident_opt)
-Marital = st.selectbox("Marital Status", Marital_opt)
-Sleep = st.selectbox("How much sleep did you get last night?", Sleep_opt)
-Stress = st.selectbox("Stress/Anxiety Level", Stress_opt)
-Activity = st.selectbox("Physical Activity Level", Activity_opt)
-LastMeal = st.selectbox("How long ago was your last meal?", LastMeal_opt)
-Hunger = st.selectbox("Current feeling of hunger", Hunger_opt)
-Skipped = st.selectbox("Have you skipped a meal today?", Skip_opt)
-NextMeal = st.selectbox("What meal are you likely to take next?", NextMeal_opt)
+Age = st.selectbox("Age", Age_opt, index=0)
+Gender = st.selectbox("Gender", Gender_opt, index=0)
+Height = st.selectbox("Height (in feet and inch)", Height_opt, index=0)
+Weight = st.selectbox("Weight (kg)", Weight_opt, index=0)
+Smoking = st.selectbox("Smoking Status", Smoke_opt, index=0)
+Resident = st.selectbox("Are you a residential student?", Resident_opt, index=0)
+Marital = st.selectbox("Marital Status", Marital_opt, index=0)
+Sleep = st.selectbox("How much sleep did you get last night?", Sleep_opt, index=0)
+Stress = st.selectbox("Stress/Anxiety Level", Stress_opt, index=0)
+Activity = st.selectbox("Physical Activity Level", Activity_opt, index=0)
+LastMeal = st.selectbox("How long ago was your last meal?", LastMeal_opt, index=0)
+Hunger = st.selectbox("Current feeling of hunger", Hunger_opt, index=0)
+Skipped = st.selectbox("Have you skipped a meal today?", Skip_opt, index=0)
+NextMeal = st.selectbox("What meal are you likely to take next?", NextMeal_opt, index=0)
 
 # ------------------------------
 # ENCODE INPUT
 # ------------------------------
-
 def encode_value(col, value):
     le = label_encoders[col]
+    if col == "Have you already skipped a meal today (Breakfast/Lunch/Dinner)?":
+        value = value.strip().rstrip(',')
     return le.transform([value])[0]
 
 input_data = pd.DataFrame({
@@ -115,14 +160,10 @@ input_data = pd.DataFrame({
 # ------------------------------
 # PREDICT
 # ------------------------------
-
 if st.button("🔍 Get Meal Suggestion"):
     encoded_pred = model.predict(input_data)[0]
-
-    # Decode to original meal suggestion
     meal_decoder = label_encoders["Meal Suggestion"]
     final_meal = meal_decoder.inverse_transform([encoded_pred])[0]
 
     st.success("🍽 **Recommended Meal:**")
     st.subheader(final_meal)
-
