@@ -6,7 +6,7 @@ import joblib
 # Load model & encoders
 # ------------------------------
 model = joblib.load("random_forest_model.pkl")
-label_encoders = joblib.load("label_encoders (1).pkl")
+label_encoders = joblib.load("label_encoders.pkl")
 
 st.title("🍽 Smart Meal Suggestion System")
 st.write("Fill the fields below to get your personalized meal recommendation.")
@@ -125,3 +125,4 @@ if st.button("🔍 Get Meal Suggestion"):
 
     st.success("🍽 **Recommended Meal:**")
     st.subheader(final_meal)
+
