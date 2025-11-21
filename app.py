@@ -7,33 +7,16 @@ import joblib
 # ------------------------------
 st.markdown("""
 <style>
-/* Background color */
-body {
-    background-color: #f5f7fa;
-}
-
-/* Title style */
-h1 {
-    color: #ff4b4b;
-    text-align: center;
-    font-family: 'Arial', sans-serif;
-}
-
-/* Subtitle style */
-h3 {
-    color: #333333;
-    font-family: 'Arial', sans-serif;
-}
-
-/* Card style for inputs */
+body { background-color: #f5f7fa; }
+h1 { color: #ff4b4b; text-align: center; font-family: 'Arial', sans-serif; margin-bottom: 10px; }
+h3 { color: #333333; font-family: 'Arial', sans-serif; }
 .stSelectbox, .stButton {
     background-color: #ffffff;
     padding: 10px;
     border-radius: 10px;
     box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
 }
-
-/* Button styling */
 .stButton>button {
     background-color: #ff4b4b;
     color: white;
@@ -132,14 +115,31 @@ Skipped = st.selectbox("Have you skipped a meal today?", Skip_opt, index=0)
 NextMeal = st.selectbox("What meal are you likely to take next?", NextMeal_opt, index=0)
 
 # ------------------------------
-# ENCODE INPUT
+# ENCODE INPUT FUNCTION
 # ------------------------------
 def encode_value(col, value):
     le = label_encoders[col]
+    value = value.strip()
+
+    # Fix skipped meal trailing comma
     if col == "Have you already skipped a meal today (Breakfast/Lunch/Dinner)?":
-        value = value.strip().rstrip(',')
+        value = value.rstrip(',')
+
+    # Fix NextMeal typo
+    if col == "What meal are you likely to take next?":
+        if value.lower() == "breakfast":
+            value = "Breakfasst"
+
+    # Check if value exists in encoder
+    if value not in le.classes_:
+        st.error(f"Value '{value}' not found in encoder for column '{col}'")
+        return None
+
     return le.transform([value])[0]
 
+# ------------------------------
+# CREATE DATAFRAME
+# ------------------------------
 input_data = pd.DataFrame({
     "Age ": [encode_value("Age ", Age)],
     "Gender": [encode_value("Gender", Gender)],
@@ -158,13 +158,15 @@ input_data = pd.DataFrame({
 })
 
 # ------------------------------
-# PREDICT
+# PREDICT AND SHOW RESULT
 # ------------------------------
 if st.button("🔍 Get Meal Suggestion"):
-    encoded_pred = model.predict(input_data)[0]
-    meal_decoder = label_encoders["Meal Suggestion"]
-    final_meal = meal_decoder.inverse_transform([encoded_pred])[0]
+    if input_data.isnull().values.any():
+        st.error("Some inputs could not be encoded. Please check your selections.")
+    else:
+        encoded_pred = model.predict(input_data)[0]
+        meal_decoder = label_encoders["Meal Suggestion"]
+        final_meal = meal_decoder.inverse_transform([encoded_pred])[0]
 
-    st.success("🍽 **Recommended Meal:**")
-    st.subheader(final_meal)
-
+        st.success("🍽 **Recommended Meal:**")
+        st.subheader(final_meal)
