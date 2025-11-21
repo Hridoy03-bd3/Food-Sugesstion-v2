@@ -1,33 +1,40 @@
 import streamlit as st
 import pandas as pd
 import joblib
+from datetime import datetime
 
 # ------------------------------
 # CSS STYLING
 # ------------------------------
 st.markdown("""
 <style>
-body { background-color: #f5f7fa; }
+body { background-color: #f0f2f6; }
 h1 { color: #ff4b4b; text-align: center; font-family: 'Arial', sans-serif; margin-bottom: 10px; }
 h3 { color: #333333; font-family: 'Arial', sans-serif; }
+
+/* Input cards */
 .stSelectbox, .stButton {
     background-color: #ffffff;
-    padding: 10px;
-    border-radius: 10px;
-    box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
-    margin-bottom: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 2px 2px 12px rgba(0,0,0,0.12);
+    margin-bottom: 12px;
 }
+
+/* Button styling */
 .stButton>button {
-    background-color: #ff4b4b;
+    background: linear-gradient(90deg, #ff4b4b, #ff1a1a);
     color: white;
     font-weight: bold;
-    border-radius: 10px;
-    padding: 10px 20px;
+    border-radius: 12px;
+    padding: 12px 25px;
     border: none;
     cursor: pointer;
+    transition: 0.3s ease all;
 }
 .stButton>button:hover {
-    background-color: #ff1a1a;
+    transform: scale(1.05);
+    background: linear-gradient(90deg, #ff1a1a, #ff4b4b);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -97,44 +104,44 @@ Skip_opt = [
 NextMeal_opt = ["Breakfast", "Dinner", "Lunch"]
 
 # ------------------------------
-# STREAMLIT INPUTS
+# STREAMLIT INPUTS IN COLUMNS
 # ------------------------------
-Age = st.selectbox("Age ", Age_opt, index=0)
-Gender = st.selectbox("Gender", Gender_opt, index=0)
-Height = st.selectbox("Height (in feet and inch)", Height_opt, index=0)
-Weight = st.selectbox("Weight (kg)", Weight_opt, index=0)
-Smoking = st.selectbox("Smoking Status", Smoke_opt, index=0)
-Resident = st.selectbox("Are you a residential student?", Resident_opt, index=0)
-Marital = st.selectbox("Marital Status", Marital_opt, index=0)
-Sleep = st.selectbox("How much sleep did you get last night?", Sleep_opt, index=0)
-Stress = st.selectbox("Stress/Anxiety Level", Stress_opt, index=0)
-Activity = st.selectbox("Physical Activity Level", Activity_opt, index=0)
-LastMeal = st.selectbox("How long ago was your last meal?", LastMeal_opt, index=0)
-Hunger = st.selectbox("Current feeling of hunger", Hunger_opt, index=0)
-Skipped = st.selectbox("Have you skipped a meal today?", Skip_opt, index=0)
-NextMeal = st.selectbox("What meal are you likely to take next?", NextMeal_opt, index=0)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    Age = st.selectbox("Age ", Age_opt, index=0)
+    Gender = st.selectbox("Gender", Gender_opt, index=0)
+    Height = st.selectbox("Height (in feet and inch)", Height_opt, index=0)
+    Weight = st.selectbox("Weight (kg)", Weight_opt, index=0)
+
+with col2:
+    Smoking = st.selectbox("Smoking Status", Smoke_opt, index=0)
+    Resident = st.selectbox("Residential Student?", Resident_opt, index=0)
+    Marital = st.selectbox("Marital Status", Marital_opt, index=0)
+    Sleep = st.selectbox("Sleep Last Night", Sleep_opt, index=0)
+
+with col3:
+    Stress = st.selectbox("Stress/Anxiety Level", Stress_opt, index=0)
+    Activity = st.selectbox("Physical Activity Level", Activity_opt, index=0)
+    LastMeal = st.selectbox("Last Meal Time", LastMeal_opt, index=0)
+    Hunger = st.selectbox("Current Hunger Level", Hunger_opt, index=0)
+    Skipped = st.selectbox("Skipped a Meal Today?", Skip_opt, index=0)
+    NextMeal = st.selectbox("Next Meal?", NextMeal_opt, index=0)
 
 # ------------------------------
-# ENCODE INPUT FUNCTION
+# ENCODE FUNCTION
 # ------------------------------
 def encode_value(col, value):
     le = label_encoders[col]
     value = value.strip()
-
-    # Fix skipped meal trailing comma
     if col == "Have you already skipped a meal today (Breakfast/Lunch/Dinner)?":
         value = value.rstrip(',')
-
-    # Fix NextMeal typo
     if col == "What meal are you likely to take next?":
         if value.lower() == "breakfast":
             value = "Breakfasst"
-
-    # Check if value exists in encoder
     if value not in le.classes_:
-        st.error(f"Value '{value}' not found in encoder for column '{col}'")
+        st.error(f"Value '{value}' not found in encoder for '{col}'")
         return None
-
     return le.transform([value])[0]
 
 # ------------------------------
@@ -158,15 +165,30 @@ input_data = pd.DataFrame({
 })
 
 # ------------------------------
-# PREDICT AND SHOW RESULT
+# PREDICT AND SAVE
 # ------------------------------
 if st.button("🔍 Get Meal Suggestion"):
     if input_data.isnull().values.any():
         st.error("Some inputs could not be encoded. Please check your selections.")
     else:
+        # Predict
         encoded_pred = model.predict(input_data)[0]
         meal_decoder = label_encoders["Meal Suggestion"]
         final_meal = meal_decoder.inverse_transform([encoded_pred])[0]
 
         st.success("🍽 **Recommended Meal:**")
         st.subheader(final_meal)
+
+        # Save to CSV
+        record = input_data.copy()
+        record["Meal Suggestion"] = final_meal
+        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            history_file = "meal_history.csv"
+            df_history = pd.read_csv(history_file)
+            df_history = pd.concat([df_history, record], ignore_index=True)
+        except FileNotFoundError:
+            df_history = record
+        df_history.to_csv(history_file, index=False)
+
+        st.info(f"✅ Your suggestion has been saved to {history_file}")
