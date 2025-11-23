@@ -4,37 +4,18 @@ import joblib
 from datetime import datetime
 
 # ------------------------------
-# CSS STYLING
+# CSS DESIGN
 # ------------------------------
 st.markdown("""
 <style>
 body { background-color: #f0f2f6; }
-h1 { color: #ff4b4b; text-align: center; font-family: 'Arial', sans-serif; margin-bottom: 10px; }
-h3 { color: #333333; font-family: 'Arial', sans-serif'; }
-
-/* Input cards */
-.stSelectbox, .stButton {
-    background-color: #ffffff;
-    padding: 12px;
+h1 { color: #ff4b4b; text-align: center; }
+.menu-card {
+    background: #ffffff;
+    padding: 15px;
+    margin: 10px 0;
     border-radius: 12px;
-    box-shadow: 2px 2px 12px rgba(0,0,0,0.12);
-    margin-bottom: 12px;
-}
-
-/* Button styling */
-.stButton>button {
-    background: linear-gradient(90deg, #ff4b4b, #ff1a1a);
-    color: white;
-    font-weight: bold;
-    border-radius: 12px;
-    padding: 12px 25px;
-    border: none;
-    cursor: pointer;
-    transition: 0.3s ease all;
-}
-.stButton>button:hover {
-    transform: scale(1.05);
-    background: linear-gradient(90deg, #ff1a1a, #ff4b4b);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.12);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -46,7 +27,21 @@ model = joblib.load("random_forest_model.pkl")
 label_encoders = joblib.load("label_encoders.pkl")
 
 st.title("🍽 Smart Meal Suggestion System For DIU Students")
-st.write("Fill the fields below to get your personalized meal recommendation.")
+
+# ------------------------------
+# FOOD NUTRITION DATABASE
+# ------------------------------
+nutrition = {
+    "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)": {"Calories": 520, "Protein": 32, "Carbs": 65, "Fat": 12},
+    "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal": {"Calories": 610, "Protein": 28, "Carbs": 82, "Fat": 18},
+    "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal": {"Calories": 580, "Protein": 35, "Carbs": 70, "Fat": 14},
+    "Khichuri (Light) + Dim Bhaji (Omelet)": {"Calories": 450, "Protein": 20, "Carbs": 60, "Fat": 10},
+    "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar": {"Calories": 490, "Protein": 21, "Carbs": 63, "Fat": 11},
+    "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji": {"Calories": 720, "Protein": 40, "Carbs": 88, "Fat": 20},
+    "Ruti (3 pcs) + Dim (Egg) Curry + Daal": {"Calories": 520, "Protein": 22, "Carbs": 72, "Fat": 14},
+    "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal": {"Calories": 480, "Protein": 12, "Carbs": 68, "Fat": 16},
+    "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal": {"Calories": 450, "Protein": 14, "Carbs": 62, "Fat": 12},
+}
 
 # ------------------------------
 # CATEGORY OPTIONS
@@ -104,7 +99,7 @@ Skip_opt = [
 NextMeal_opt = ["Breakfast", "Dinner", "Lunch"]
 
 # ------------------------------
-# STREAMLIT INPUTS
+# USER INPUT SECTION
 # ------------------------------
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -128,91 +123,71 @@ with col3:
     NextMeal = st.selectbox("Next Meal?", NextMeal_opt)
 
 # ------------------------------
-# ENCODE FUNCTION
+# SIMPLE ENCODER
 # ------------------------------
-def encode_value(col, value):
+def encode(col, val):
     le = label_encoders[col]
-    value = value.strip().rstrip(',')
-    if col == "What meal are you likely to take next?":
-        next_meal_map = {"Breakfast": "Breakfasst"}  # typo fix
-        value = next_meal_map.get(value, value)
-    if value not in le.classes_:
-        st.error(f"Value '{value}' not found in encoder for '{col}'")
-        return None
-    return le.transform([value])[0]
+    return le.transform([val])[0]
 
 input_data = pd.DataFrame({
-    "Age ": [encode_value("Age ", Age)],
-    "Gender": [encode_value("Gender", Gender)],
-    "Height (in feet and inch)": [encode_value("Height (in feet and inch)", Height)],
-    "Weight (kg)": [encode_value("Weight (kg)", Weight)],
-    "Smoking Status": [encode_value("Smoking Status", Smoking)],
-    "Are you a residential student (living in a hall/hostel)?": [encode_value("Are you a residential student (living in a hall/hostel)?", Resident)],
-    "Marital Status": [encode_value("Marital Status", Marital)],
-    "How much sleep did you get last night?": [encode_value("How much sleep did you get last night?", Sleep)],
-    "How would you describe your current stress/anxiety level?": [encode_value("How would you describe your current stress/anxiety level?", Stress)],
-    "What is your estimated physical activity level for today?": [encode_value("What is your estimated physical activity level for today?", Activity)],
-    "How long ago was your last proper meal (e.g., breakfast)?": [encode_value("How long ago was your last proper meal (e.g., breakfast)?", LastMeal)],
-    "How would you rate your current feeling of hunger?": [encode_value("How would you rate your current feeling of hunger?", Hunger)],
-    "Have you already skipped a meal today (Breakfast/Lunch/Dinner)?": [encode_value("Have you already skipped a meal today (Breakfast/Lunch/Dinner)?", Skipped)],
-    "What meal are you likely to take next?": [encode_value("What meal are you likely to take next?", NextMeal)],
+    "Age ": [encode("Age ", Age)],
+    "Gender": [encode("Gender", Gender)],
+    "Height (in feet and inch)": [encode("Height (in feet and inch)", Height)],
+    "Weight (kg)": [encode("Weight (kg)", Weight)],
+    "Smoking Status": [encode("Smoking Status", Smoking)],
+    "Are you a residential student (living in a hall/hostel)?": [encode("Are you a residential student (living in a hall/hostel)?", Resident)],
+    "Marital Status": [encode("Marital Status", Marital)],
+    "How much sleep did you get last night?": [encode("How much sleep did you get last night?", Sleep)],
+    "How would you describe your current stress/anxiety level?": [encode("How would you describe your current stress/anxiety level?", Stress)],
+    "What is your estimated physical activity level for today?": [encode("What is your estimated physical activity level for today?", Activity)],
+    "How long ago was your last proper meal (e.g., breakfast)?": [encode("How long ago was your last proper meal (e.g., breakfast)?", LastMeal)],
+    "How would you rate your current feeling of hunger?": [encode("How would you rate your current feeling of hunger?", Hunger)],
+    "Have you already skipped a meal today (Breakfast/Lunch/Dinner)?": [encode("Have you already skipped a meal today (Breakfast/Lunch/Dinner)?", Skipped)],
+    "What meal are you likely to take next?": [encode("What meal are you likely to take next?", NextMeal)],
 })
 
 # ------------------------------
-# PREDICTION
+# PREDICTION BUTTON
 # ------------------------------
 if st.button("🔍 Get Meal Suggestion"):
-    if input_data.isnull().values.any():
-        st.error("Some inputs could not be encoded. Please check your selections.")
-    else:
-        encoded_pred = model.predict(input_data)[0]
-        meal_decoder = label_encoders["Meal Suggestion"]
-        final_meal = meal_decoder.inverse_transform([encoded_pred])[0]
+    pred = model.predict(input_data)[0]
+    meal = label_encoders["Meal Suggestion"].inverse_transform([pred])[0]
 
-        st.success("🍽 **Recommended Meal:**")
-        st.subheader(final_meal)
-
-        # Save prediction in session_state
-        st.session_state["last_prediction"] = final_meal
-        st.session_state["last_input"] = input_data.copy()
-
-# ------------------------------
-# SAVE TO CSV
-# ------------------------------
-if "last_prediction" in st.session_state:
-    save_option = st.checkbox("💾 Save this suggestion to history?")
-    if save_option:
-        record = st.session_state["last_input"]
-        record["Meal Suggestion"] = st.session_state["last_prediction"]
-        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            history_file = "meal_history.csv"
-            df_history = pd.read_csv(history_file)
-            df_history = pd.concat([df_history, record], ignore_index=True)
-        except FileNotFoundError:
-            df_history = record
-        df_history.to_csv(history_file, index=False)
-        st.info(f"✅ Your suggestion has been saved to {history_file}")
+    st.success(f"🍽 **Recommended Meal:** {meal}")
+    
+    # Show nutrition
+    if meal in nutrition:
+        nut = nutrition[meal]
+        st.subheader("🍎 Nutrition Breakdown")
+        st.write(f"**Calories:** {nut['Calories']} kcal")
+        st.write(f"**Protein:** {nut['Protein']} g")
+        st.write(f"**Carbohydrates:** {nut['Carbs']} g")
+        st.write(f"**Fat:** {nut['Fat']} g")
 
 # ------------------------------
-# FULL FOOD MENU
+# FOOD MENU VIEWER
 # ------------------------------
-def show_food_menu():
-    st.header("📋 Full Food Menu")
-    menu_type = st.radio("Select Meal Type:", ["Breakfast", "Lunch", "Dinner"])
-    if menu_type == "Breakfast":
-        items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daals", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar"]
-        st.subheader("🍳 Breakfast Menu")
-    elif menu_type == "Lunch":
-        items = ["Grilled Chicken with Rice", "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)", "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal", "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji"]
-        st.subheader("🥗 Lunch Menu")
-    else:
-        items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)", "Ruti (3 pcs) + Dim (Egg) Curry + Daals", "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
-        st.subheader("🌙 Dinner Menu")
-    for item in items:
-        st.write("•", item)
+st.header("📋 Full Food Menu with Nutrition")
 
-st.sidebar.header("🍽 Menu Viewer")
-if st.sidebar.button("View Full Menu"):
-    show_food_menu()
+meal_type = st.radio("Select meal:", ["Breakfast", "Lunch", "Dinner"])
 
+if meal_type == "Breakfast":
+    items = ["Khichuri (Light) + Dim Bhaji (Omelet)",
+             "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal",
+             "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal"]
+elif meal_type == "Lunch":
+    items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)",
+             "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal",
+             "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji"]
+else:
+    items = ["Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal",
+             "Ruti (3 pcs) + Dim (Egg) Curry + Daal"]
+
+# show menu
+for item in items:
+    st.markdown(f"<div class='menu-card'><b>{item}</b><br>"
+                f"Calories: {nutrition[item]['Calories']} kcal<br>"
+                f"Protein: {nutrition[item]['Protein']} g<br>"
+                f"Carbs: {nutrition[item]['Carbs']} g<br>"
+                f"Fat: {nutrition[item]['Fat']} g</div>",
+                unsafe_allow_html=True)
