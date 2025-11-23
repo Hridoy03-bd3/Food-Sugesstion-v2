@@ -115,7 +115,7 @@ with col1:
 
 with col2:
     Smoking = st.selectbox("Smoking Status", Smoke_opt)
-    Resident = st.selectbox("Residential Student?", Resident_opt)
+    Resident = st.selectbox("Residential (Inside Campus)?", Resident_opt)
     Marital = st.selectbox("Marital Status", Marital_opt)
     Sleep = st.selectbox("Sleep Last Night", Sleep_opt)
 
@@ -215,3 +215,4 @@ def show_food_menu():
 st.sidebar.header("🍽 Menu Viewer")
 if st.sidebar.button("View Full Menu"):
     show_food_menu()
+
