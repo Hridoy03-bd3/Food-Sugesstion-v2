@@ -4,41 +4,7 @@ import joblib
 from datetime import datetime
 
 # ------------------------------
-# CSS STYLING
-# ------------------------------
-st.markdown("""
-<style>
-body { background-color: #f0f2f6; }
-h1 { color: #ff4b4b; text-align: center; font-family: 'Arial', sans-serif; margin-bottom: 10px; }
-h3 { color: #333333; font-family: 'Arial', sans-serif'; }
-
-.stSelectbox, .stButton {
-    background-color: #ffffff;
-    padding: 12px;
-    border-radius: 12px;
-    box-shadow: 2px 2px 12px rgba(0,0,0,0.12);
-    margin-bottom: 12px;
-}
-
-.stButton>button {
-    background: linear-gradient(90deg, #ff4b4b, #ff1a1a);
-    color: white;
-    font-weight: bold;
-    border-radius: 12px;
-    padding: 12px 25px;
-    border: none;
-    cursor: pointer;
-    transition: 0.3s ease all;
-}
-.stButton>button:hover {
-    transform: scale(1.05);
-    background: linear-gradient(90deg, #ff1a1a, #ff4b4b);
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ------------------------------
-# LOAD MODEL & ENCODERS
+# Load model & encoders
 # ------------------------------
 model = joblib.load("random_forest_model.pkl")
 label_encoders = joblib.load("label_encoders.pkl")
@@ -47,7 +13,7 @@ st.title("🍽 Smart Meal Suggestion System For DIU Students")
 st.write("Fill the fields below to get your personalized meal recommendation.")
 
 # ------------------------------
-# OPTIONS
+# Options
 # ------------------------------
 Age_opt = ["18-20", "21-23", "23-26"]
 Gender_opt = ["Female", "Male"]
@@ -74,10 +40,10 @@ Activity_opt = ["Light (Walking to class/stairs)", "Moderate (Gym/Sports <60 min
 LastMeal_opt = ["2-4 hours ago", "4-6 hours ago (Optimal hunger)", "Less than 2 hours ago", "More than 6 hours ago (Skipped meal/High hunger)"]
 Hunger_opt = ["Moderately hungry (Ready to eat)", "Not hungry at all", "Slightly hungry", "Very hungry (Feeling weak/distracted)"]
 Skip_opt = ["No, I have not skipped a meal.", "Yes, I skipped Breakfast", "Yes, I skipped Dinner", "Yes, I skipped Lunch"]
-NextMeal_opt = ["", "Breakfast", "Lunch", "Dinner"]  # empty default
+NextMeal_opt = ["Breakfast", "Lunch", "Dinner"]
 
 # ------------------------------
-# USER INPUT
+# User Input
 # ------------------------------
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -101,18 +67,23 @@ with col3:
     NextMeal = st.selectbox("Next Meal?", NextMeal_opt)
 
 # ------------------------------
-# SAFE ENCODE FUNCTION
+# Safe encode function
 # ------------------------------
 def safe_encode(col, val):
     le = label_encoders[col]
     val = val.strip()
+    # Map values to match training labels if necessary
+    if col == "What meal are you likely to take next?":
+        if val == "Breakfast" and "Breakfasst" in le.classes_:
+            val = "Breakfasst"
     if val not in le.classes_:
+        # Pick first class to avoid crash
         st.warning(f"Value '{val}' not found in encoder for '{col}', using default.")
         val = le.classes_[0]
     return le.transform([val])[0]
 
 # ------------------------------
-# PREPARE DATAFRAME
+# Prepare DataFrame
 # ------------------------------
 input_df = pd.DataFrame({
     "Age ": [safe_encode("Age ", Age)],
@@ -132,23 +103,38 @@ input_df = pd.DataFrame({
 })
 
 # ------------------------------
-# MEAL SUGGESTION MAPPING
+# Predict
 # ------------------------------
-meal_mapping = {
-    0: "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)",
-    1: "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal",
-    2: "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal",
-    3: "Khichuri (Light) + Dim Bhaji (Omelet)",
-    4: "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar",
-    5: "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji",
-    6: "Ruti (3 pcs) + Dim (Egg) Curry + Daal",
-    7: "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal",
-    8: "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal",
-    9: "Ruti/Porota (2 pcs) + Shobji + Daal"
-}
+if st.button("🔍 Get Meal Suggestion"):
+    pred_encoded = model.predict(input_df)[0]
+    meal_decoder = label_encoders["Meal Suggestion"]
+    final_meal = meal_decoder.inverse_transform([pred_encoded])[0]
+
+    st.success("🍽 Recommended Meal:")
+    st.subheader(final_meal)
+
+    # Save in session_state
+    st.session_state["last_prediction"] = final_meal
+    st.session_state["last_input"] = input_df.copy()
 
 # ------------------------------
-# NUTRITION DATA
+# Save to CSV
+# ------------------------------
+if "last_prediction" in st.session_state:
+    if st.checkbox("💾 Save this suggestion to history?"):
+        record = st.session_state["last_input"]
+        record["Meal Suggestion"] = st.session_state["last_prediction"]
+        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            df_hist = pd.read_csv("meal_history.csv")
+            df_hist = pd.concat([df_hist, record], ignore_index=True)
+        except FileNotFoundError:
+            df_hist = record
+        df_hist.to_csv("meal_history.csv", index=False)
+        st.info("Saved successfully.")
+
+# ------------------------------
+# Food menu with nutrition
 # ------------------------------
 nutrition_data = {
     "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)": {"Calories": 400, "Protein": 30, "Carbs": 50, "Fat": 12},
@@ -163,37 +149,20 @@ nutrition_data = {
     "Ruti/Porota (2 pcs) + Shobji + Daal": {"Calories": 410, "Protein": 17, "Carbs": 60, "Fat": 11},
 }
 
-# ------------------------------
-# PREDICTION
-# ------------------------------
-if st.button("🔍 Get Meal Suggestion"):
-    pred_encoded = model.predict(input_df)[0]
-    recommended_meal = meal_mapping[pred_encoded]
+st.sidebar.header("🍽 Full Food Menu")
+menu_choice = st.sidebar.radio("Select Meal Type:", ["Breakfast", "Lunch", "Dinner"])
 
-    st.success("🍽 Recommended Meal:")
-    st.subheader(recommended_meal)
+menu_items = []
+if menu_choice == "Breakfast":
+    menu_items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar", "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daal"]
+elif menu_choice == "Lunch":
+    menu_items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)", "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal", "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji", "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
+else:
+    menu_items = ["Ruti (3 pcs) + Dim (Egg) Curry + Daal", "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal"]
 
-    # Display nutrition
-    if recommended_meal in nutrition_data:
-        nut = nutrition_data[recommended_meal]
-        st.write(f"**Nutrition:** Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
-
-    # Save prediction in session_state
-    st.session_state["last_prediction"] = recommended_meal
-    st.session_state["last_input"] = input_df.copy()
-
-# ------------------------------
-# SAVE TO CSV
-# ------------------------------
-if "last_prediction" in st.session_state:
-    if st.checkbox("💾 Save this suggestion to history?"):
-        record = st.session_state["last_input"]
-        record["Meal Suggestion"] = st.session_state["last_prediction"]
-        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            df_hist = pd.read_csv("meal_history.csv")
-            df_hist = pd.concat([df_hist, record], ignore_index=True)
-        except FileNotFoundError:
-            df_hist = record
-        df_hist.to_csv("meal_history.csv", index=False)
-        st.info("Saved successfully.")
+st.header(f"📋 {menu_choice} Menu")
+for item in menu_items:
+    st.write(f"• **{item}**")
+    if item in nutrition_data:
+        nut = nutrition_data[item]
+        st.write(f" Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
