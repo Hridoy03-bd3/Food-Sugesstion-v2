@@ -4,7 +4,41 @@ import joblib
 from datetime import datetime
 
 # ------------------------------
-# Load model & encoders
+# CSS STYLING
+# ------------------------------
+st.markdown("""
+<style>
+body { background-color: #f0f2f6; }
+h1 { color: #ff4b4b; text-align: center; font-family: 'Arial', sans-serif; margin-bottom: 10px; }
+h3 { color: #333333; font-family: 'Arial', sans-serif'; }
+
+.stSelectbox, .stButton {
+    background-color: #ffffff;
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 2px 2px 12px rgba(0,0,0,0.12);
+    margin-bottom: 12px;
+}
+
+.stButton>button {
+    background: linear-gradient(90deg, #ff4b4b, #ff1a1a);
+    color: white;
+    font-weight: bold;
+    border-radius: 12px;
+    padding: 12px 25px;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s ease all;
+}
+.stButton>button:hover {
+    transform: scale(1.05);
+    background: linear-gradient(90deg, #ff1a1a, #ff4b4b);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ------------------------------
+# LOAD MODEL & ENCODERS
 # ------------------------------
 model = joblib.load("random_forest_model.pkl")
 label_encoders = joblib.load("label_encoders.pkl")
@@ -13,7 +47,7 @@ st.title("🍽 Smart Meal Suggestion System For DIU Students")
 st.write("Fill the fields below to get your personalized meal recommendation.")
 
 # ------------------------------
-# Options
+# OPTIONS
 # ------------------------------
 Age_opt = ["18-20", "21-23", "23-26"]
 Gender_opt = ["Female", "Male"]
@@ -40,10 +74,10 @@ Activity_opt = ["Light (Walking to class/stairs)", "Moderate (Gym/Sports <60 min
 LastMeal_opt = ["2-4 hours ago", "4-6 hours ago (Optimal hunger)", "Less than 2 hours ago", "More than 6 hours ago (Skipped meal/High hunger)"]
 Hunger_opt = ["Moderately hungry (Ready to eat)", "Not hungry at all", "Slightly hungry", "Very hungry (Feeling weak/distracted)"]
 Skip_opt = ["No, I have not skipped a meal.", "Yes, I skipped Breakfast", "Yes, I skipped Dinner", "Yes, I skipped Lunch"]
-NextMeal_opt = ["Breakfast", "Lunch", "Dinner"]
+NextMeal_opt = ["", "Breakfast", "Lunch", "Dinner"]  # empty string default hides menu
 
 # ------------------------------
-# User Input
+# USER INPUT
 # ------------------------------
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -67,7 +101,7 @@ with col3:
     NextMeal = st.selectbox("Next Meal?", NextMeal_opt)
 
 # ------------------------------
-# Safe encode function
+# SAFE ENCODE FUNCTION
 # ------------------------------
 def safe_encode(col, val):
     le = label_encoders[col]
@@ -77,13 +111,12 @@ def safe_encode(col, val):
         if val == "Breakfast" and "Breakfasst" in le.classes_:
             val = "Breakfasst"
     if val not in le.classes_:
-        # Pick first class to avoid crash
         st.warning(f"Value '{val}' not found in encoder for '{col}', using default.")
         val = le.classes_[0]
     return le.transform([val])[0]
 
 # ------------------------------
-# Prepare DataFrame
+# PREPARE DATAFRAME
 # ------------------------------
 input_df = pd.DataFrame({
     "Age ": [safe_encode("Age ", Age)],
@@ -103,7 +136,7 @@ input_df = pd.DataFrame({
 })
 
 # ------------------------------
-# Predict
+# PREDICTION
 # ------------------------------
 if st.button("🔍 Get Meal Suggestion"):
     pred_encoded = model.predict(input_df)[0]
@@ -118,7 +151,7 @@ if st.button("🔍 Get Meal Suggestion"):
     st.session_state["last_input"] = input_df.copy()
 
 # ------------------------------
-# Save to CSV
+# SAVE TO CSV
 # ------------------------------
 if "last_prediction" in st.session_state:
     if st.checkbox("💾 Save this suggestion to history?"):
@@ -134,7 +167,7 @@ if "last_prediction" in st.session_state:
         st.info("Saved successfully.")
 
 # ------------------------------
-# Food menu with nutrition
+# FOOD MENU BASED ON NEXT MEAL
 # ------------------------------
 nutrition_data = {
     "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)": {"Calories": 400, "Protein": 30, "Carbs": 50, "Fat": 12},
@@ -149,20 +182,23 @@ nutrition_data = {
     "Ruti/Porota (2 pcs) + Shobji + Daal": {"Calories": 410, "Protein": 17, "Carbs": 60, "Fat": 11},
 }
 
-st.sidebar.header("🍽 Full Food Menu")
-menu_choice = st.sidebar.radio("Select Meal Type:", ["Breakfast", "Lunch", "Dinner"])
+# Show menu only if user selects a NextMeal
+if NextMeal != "":
+    st.header(f"📋 {NextMeal} Menu")
+    if NextMeal == "Breakfast":
+        menu_items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar",
+                      "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daal"]
+    elif NextMeal == "Lunch":
+        menu_items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)",
+                      "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal",
+                      "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji",
+                      "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
+    else:  # Dinner
+        menu_items = ["Ruti (3 pcs) + Dim (Egg) Curry + Daal",
+                      "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal"]
 
-menu_items = []
-if menu_choice == "Breakfast":
-    menu_items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar", "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daal"]
-elif menu_choice == "Lunch":
-    menu_items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)", "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal", "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji", "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
-else:
-    menu_items = ["Ruti (3 pcs) + Dim (Egg) Curry + Daal", "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal"]
-
-st.header(f"📋 {menu_choice} Menu")
-for item in menu_items:
-    st.write(f"• **{item}**")
-    if item in nutrition_data:
-        nut = nutrition_data[item]
-        st.write(f" Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
+    for item in menu_items:
+        st.write(f"• **{item}**")
+        if item in nutrition_data:
+            nut = nutrition_data[item]
+            st.write(f" Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
