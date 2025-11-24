@@ -181,4 +181,64 @@ if st.button("🔍 Get Meal Suggestion"):
     # Meal prediction
     pred_encoded = model.predict(input_df)[0]
     meal_decoder = label_encoders["Meal Suggestion"]
-    final_meal = meal_decoder.inverse_transform([pred_encoded])[0
+    final_meal = meal_decoder.inverse_transform([pred_encoded])[0]
+
+    st.success("🍽 Recommended Meal:")
+    st.subheader(final_meal)
+
+    # Save in session_state
+    st.session_state["last_prediction"] = final_meal
+    st.session_state["last_input"] = input_df.copy()
+
+# ------------------------------
+# SAVE TO CSV
+# ------------------------------
+if "last_prediction" in st.session_state:
+    if st.checkbox("💾 Save this suggestion to history?"):
+        record = st.session_state["last_input"]
+        record["Meal Suggestion"] = st.session_state["last_prediction"]
+        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            df_hist = pd.read_csv("meal_history.csv")
+            df_hist = pd.concat([df_hist, record], ignore_index=True)
+        except FileNotFoundError:
+            df_hist = record
+        df_hist.to_csv("meal_history.csv", index=False)
+        st.info("Saved successfully.")
+
+# ------------------------------
+# FOOD MENU BASED ON NEXT MEAL
+# ------------------------------
+nutrition_data = {
+    "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)": {"Calories": 400, "Protein": 30, "Carbs": 50, "Fat": 12},
+    "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal": {"Calories": 520, "Protein": 25, "Carbs": 65, "Fat": 18},
+    "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal": {"Calories": 500, "Protein": 35, "Carbs": 60, "Fat": 15},
+    "Khichuri (Light) + Dim Bhaji (Omelet)": {"Calories": 450, "Protein": 20, "Carbs": 55, "Fat": 12},
+    "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar": {"Calories": 470, "Protein": 22, "Carbs": 57, "Fat": 13},
+    "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji": {"Calories": 550, "Protein": 30, "Carbs": 65, "Fat": 20},
+    "Ruti (3 pcs) + Dim (Egg) Curry + Daal": {"Calories": 480, "Protein": 25, "Carbs": 55, "Fat": 15},
+    "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal": {"Calories": 400, "Protein": 15, "Carbs": 60, "Fat": 10},
+    "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal": {"Calories": 420, "Protein": 18, "Carbs": 62, "Fat": 12},
+    "Ruti/Porota (2 pcs) + Shobji + Daal": {"Calories": 410, "Protein": 17, "Carbs": 60, "Fat": 11},
+}
+
+# Show menu only if user selects a NextMeal
+if NextMeal != "":
+    st.header(f"📋 {NextMeal} Menu")
+    if NextMeal == "Breakfast":
+        menu_items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar",
+                      "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daal"]
+    elif NextMeal == "Lunch":
+        menu_items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)",
+                      "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal",
+                      "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji",
+                      "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
+    else:  # Dinner
+        menu_items = ["Ruti (3 pcs) + Dim (Egg) Curry + Daal",
+                      "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal"]
+
+    for item in menu_items:
+        st.write(f"• **{item}**")
+        if item in nutrition_data:
+            nut = nutrition_data[item]
+            st.write(f" Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
