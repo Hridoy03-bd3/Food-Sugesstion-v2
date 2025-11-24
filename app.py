@@ -195,10 +195,11 @@ if NextMeal != "":
                       "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
     else:  # Dinner
         menu_items = ["Ruti (3 pcs) + Dim (Egg) Curry + Daal",
-                      "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal"]
+                      "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal","Khichuri (Light) + Dim Bhaji (Omelet)": {"Calories": 450, "Protein": 20, "Carbs": 55, "Fat": 12},]
 
     for item in menu_items:
         st.write(f"• **{item}**")
         if item in nutrition_data:
             nut = nutrition_data[item]
             st.write(f" Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
+
