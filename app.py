@@ -74,7 +74,7 @@ Activity_opt = ["Light (Walking to class/stairs)", "Moderate (Gym/Sports <60 min
 LastMeal_opt = ["2-4 hours ago", "4-6 hours ago (Optimal hunger)", "Less than 2 hours ago", "More than 6 hours ago (Skipped meal/High hunger)"]
 Hunger_opt = ["Moderately hungry (Ready to eat)", "Not hungry at all", "Slightly hungry", "Very hungry (Feeling weak/distracted)"]
 Skip_opt = ["No, I have not skipped a meal.", "Yes, I skipped Breakfast", "Yes, I skipped Dinner", "Yes, I skipped Lunch"]
-NextMeal_opt = ["", "Breakfast", "Lunch", "Dinner"]  # empty string default hides menu
+NextMeal_opt = ["", "Breakfast", "Lunch", "Dinner"]
 
 # ------------------------------
 # USER INPUT
@@ -101,12 +101,40 @@ with col3:
     NextMeal = st.selectbox("Next Meal?", NextMeal_opt)
 
 # ------------------------------
+# BMI CALCULATION
+# ------------------------------
+def calculate_bmi(height, weight):
+    height_ft, height_inch = height.split(" ")[0], height.split(" ")[2]  # Example: "5 feet 8 inches"
+    height_ft = int(height_ft)
+    height_inch = int(height_inch)
+    
+    height_in_meters = (height_ft * 0.3048) + (height_inch * 0.0254)
+    
+    bmi = weight / (height_in_meters ** 2)
+    
+    return round(bmi, 2)
+
+# ------------------------------
+# CALORIES BASED ON BMI
+# ------------------------------
+def calculate_calories(bmi):
+    if bmi < 18.5:
+        calorie_needs = "Higher than normal calorie intake to gain weight (2500-3000 kcal/day)"
+    elif 18.5 <= bmi <= 24.9:
+        calorie_needs = "Normal calorie intake (2000-2500 kcal/day)"
+    elif 25 <= bmi <= 29.9:
+        calorie_needs = "Moderate calorie intake (1800-2200 kcal/day) for weight management"
+    else:
+        calorie_needs = "Lower calorie intake (1500-2000 kcal/day) for weight loss"
+    
+    return calorie_needs
+
+# ------------------------------
 # SAFE ENCODE FUNCTION
 # ------------------------------
 def safe_encode(col, val):
     le = label_encoders[col]
     val = val.strip()
-    # Map values to match training labels if necessary
     if col == "What meal are you likely to take next?":
         if val == "Breakfast" and "Breakfasst" in le.classes_:
             val = "Breakfasst"
@@ -139,68 +167,18 @@ input_df = pd.DataFrame({
 # PREDICTION
 # ------------------------------
 if st.button("🔍 Get Meal Suggestion"):
+    # Get weight (kg) value from the user
+    weight_value = int(Weight.split(" ")[0])  # Example: "45 kg – 55 kg" -> 45
+    
+    # Calculate BMI and calorie needs
+    bmi_value = calculate_bmi(Height, weight_value)
+    calorie_suggestion = calculate_calories(bmi_value)
+
+    # Show BMI and calorie suggestion
+    st.subheader(f"BMI: {bmi_value}")
+    st.write(f"Calories Needed: {calorie_suggestion}")
+    
+    # Meal prediction
     pred_encoded = model.predict(input_df)[0]
     meal_decoder = label_encoders["Meal Suggestion"]
-    final_meal = meal_decoder.inverse_transform([pred_encoded])[0]
-
-    st.success("🍽 Recommended Meal:")
-    st.subheader(final_meal)
-
-    # Save in session_state
-    st.session_state["last_prediction"] = final_meal
-    st.session_state["last_input"] = input_df.copy()
-
-# ------------------------------
-# SAVE TO CSV
-# ------------------------------
-if "last_prediction" in st.session_state:
-    if st.checkbox("💾 Save this suggestion to history?"):
-        record = st.session_state["last_input"]
-        record["Meal Suggestion"] = st.session_state["last_prediction"]
-        record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            df_hist = pd.read_csv("meal_history.csv")
-            df_hist = pd.concat([df_hist, record], ignore_index=True)
-        except FileNotFoundError:
-            df_hist = record
-        df_hist.to_csv("meal_history.csv", index=False)
-        st.info("Saved successfully.")
-
-# ------------------------------
-# FOOD MENU BASED ON NEXT MEAL
-# ------------------------------
-nutrition_data = {
-    "Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)": {"Calories": 400, "Protein": 30, "Carbs": 50, "Fat": 12},
-    "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal": {"Calories": 520, "Protein": 25, "Carbs": 65, "Fat": 18},
-    "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal": {"Calories": 500, "Protein": 35, "Carbs": 60, "Fat": 15},
-    "Khichuri (Light) + Dim Bhaji (Omelet)": {"Calories": 450, "Protein": 20, "Carbs": 55, "Fat": 12},
-    "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar": {"Calories": 470, "Protein": 22, "Carbs": 57, "Fat": 13},
-    "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji": {"Calories": 550, "Protein": 30, "Carbs": 65, "Fat": 20},
-    "Ruti (3 pcs) + Dim (Egg) Curry + Daal": {"Calories": 480, "Protein": 25, "Carbs": 55, "Fat": 15},
-    "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal": {"Calories": 400, "Protein": 15, "Carbs": 60, "Fat": 10},
-    "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal": {"Calories": 420, "Protein": 18, "Carbs": 62, "Fat": 12},
-    "Ruti/Porota (2 pcs) + Shobji + Daal": {"Calories": 410, "Protein": 17, "Carbs": 60, "Fat": 11},
-}
-
-# Show menu only if user selects a NextMeal
-if NextMeal != "":
-    st.header(f"📋 {NextMeal} Menu")
-    if NextMeal == "Breakfast":
-        menu_items = ["Khichuri (Light) + Dim Bhaji (Omelet)", "Khichuri (Light) + Dim Bhaji (Omelet) + Achaar",
-                      "Ruti/Porota (2 pcs) + Alu Bhaji (Potato) + Daal", "Ruti/Porota (2 pcs) + Shobji + Daal"]
-    elif NextMeal == "Lunch":
-        menu_items = ["Bhaat (Less) + Murgi (Chicken) Soup/Jhol + Shakh (Greens)",
-                      "Bhaat + Mach (Fish Curry) + Shakh (Leafy Greens) + Daal",
-                      "Khichuri (Moderate/Heavy) + Murgi (Chicken) Curry + Shobji",
-                      "Bhaat + Dim (Egg Bhuna) + Alu Bhorta + Daal"]
-    else:  # Dinner
-        menu_items = ["Ruti (3 pcs) + Dim (Egg) Curry + Daal",
-                      "Ruti/Porota (2 pcs) + Shobji (Vegetable Curry) + Daal","Khichuri (Light) + Dim Bhaji (Omelet)"]
-
-    for item in menu_items:
-        st.write(f"• **{item}**")
-        if item in nutrition_data:
-            nut = nutrition_data[item]
-            st.write(f" Calories: {nut['Calories']} kcal | Protein: {nut['Protein']} g | Carbs: {nut['Carbs']} g | Fat: {nut['Fat']} g")
-
-
+    final_meal = meal_decoder.inverse_transform([pred_encoded])[0
